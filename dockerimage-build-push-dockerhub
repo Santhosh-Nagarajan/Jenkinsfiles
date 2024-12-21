@@ -1,0 +1,53 @@
+pipeline {
+    agent any
+
+    environment {
+        GIT_CREDENTIALS = credentials('git-credentials') 
+        DOCKER_CREDENTIALS = credentials('dockerhub-credentials-id') // Replace with your Jenkins DockerHub credentials ID
+        IMAGE_NAME = 'santhoshsp/sample' // Replace with your desired Docker image name
+    }
+
+    stages {
+        stage('Git Clone') {
+            steps {
+                echo 'Cloning the Git repository...'
+                git credentialsId: GIT_CREDENTIALS, url: 'https://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@github.com/Santhosh-Nagarajan/python-flask-helloword-dockerfile.git'
+            }
+        }
+
+        stage('Docker Login') {
+            steps {
+                echo 'Logging in to DockerHub...'
+                sh 'echo $DOCKER_CREDENTIALS_PSW | docker login -u $DOCKER_CREDENTIALS_USR --password-stdin'
+            }
+        }
+
+        stage('Docker Image Build') {
+            steps {
+                script {
+                    // Dynamically generate the version using BUILD_NUMBER and timestamp
+                    def version = "${BUILD_NUMBER}-${env.BUILD_ID}"
+                    env.DOCKER_TAG = "${IMAGE_NAME}:${version}"
+
+                    echo "Building Docker image with tag: ${env.DOCKER_TAG}"
+                    sh "docker build -t ${env.DOCKER_TAG} ."
+                }
+            }
+        }
+
+        stage('Image List') {
+            steps {
+                echo 'Listing Docker images...'
+                sh 'docker images'
+            }
+        }
+
+        // Optional: Add a Docker Push stage
+        stage('Docker Push') {
+            steps {
+                echo "Pushing Docker image: ${env.DOCKER_TAG} to registry..."
+                sh "docker push ${env.DOCKER_TAG}"
+            }
+        }
+    }
+}
