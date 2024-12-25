@@ -1,0 +1,52 @@
+pipeline {  
+    agent any
+    tools {
+        maven 'maven'
+    }
+    stages {  
+        stage ('Git-Checkout') {  
+            steps {
+                cleanWs() // Clean workspace
+                git credentialsId: 'Santhosh-Nagarajan/******', url: 'https://github.com/Santhosh-Nagarajan/TomcatMavenApp.git'
+                echo "Checkout successful";
+            } 
+        }
+        stage ('Build') {  
+            steps {
+                sh 'mvn clean'
+                sh 'mvn package'
+                sh 'ls -l target' // List files to verify WAR file is created
+                echo "Build successful";
+            } 
+        }
+        stage ('Deploy to Tomcat') {
+            steps {
+                script {
+                    def warFile = "target/TomcatMavenApp-2.0.war"
+                    def tomcatHost = "localhost"
+                    def tomcatPort = "9090"
+                    def tomcatUser = "santhosh"
+                    def tomcatPassword = "santhosh123"
+
+                    // Verify file existence before deployment
+                    if (fileExists(warFile)) {
+                        echo "Deploying WAR file to Tomcat Server..."
+                        sh """
+                            curl --upload-file ${warFile} \
+                            --user ${tomcatUser}:${tomcatPassword} \
+                            "http://${tomcatHost}:${tomcatPort}/manager/text/deploy?path=/TomcatMavenApp&update=true"
+                        """
+                        echo "Deployment successful!";
+                    } else {
+                        error "WAR file not found: ${warFile}. Check the build stage."
+                    }
+                }
+            }
+        }
+        stage ('Monitor') { 
+            steps { 
+                echo "Now you can monitor!";
+            }
+        }
+    }
+}
