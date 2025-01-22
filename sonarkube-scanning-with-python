@@ -1,0 +1,61 @@
+pipeline {
+    agent any
+
+    environment {
+        PROJECT_KEY = 'jenkins-project'
+        SONAR_SCANNER_HOME = tool 'sonarqube' // Assuming SonarScanner is installed and configured in Jenkins
+        SONAR_HOST_URL = 'http://localhost:9000'
+        SONAR_AUTH_TOKEN = 'sqp_cde65b19f48252a5cd7928dd4b7826c41aefc862'
+    }
+
+    stages {
+        
+        stage('Git Clone....!') {
+            steps {
+                echo 'Clone The Repo...'
+                git credentialsId: 'git-credentials', url: 'https://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@github.com/Santhosh-Nagarajan/Python-Flask.git'
+                
+            }
+        }
+        
+        
+        
+
+        stage('Code Analysis') {
+            steps {
+                echo 'Running SonarQube Scanner...'
+                withSonarQubeEnv('sonarqube') {
+                    sh """
+                    ${SONAR_SCANNER_HOME}/bin/sonar-scanner \
+                        -Dsonar.projectKey=${PROJECT_KEY} \
+                        -Dsonar.sources=. \
+                        -Dsonar.host.url=${env.SONAR_HOST_URL} \
+                        -Dsonar.token=${env.SONAR_AUTH_TOKEN} 
+                    """
+                }
+            }
+        }
+
+        stage('Quality Gate') {
+            steps {
+                echo 'Checking SonarQube Quality Gate...'
+                script {
+                    def qualityGate = waitForQualityGate()
+                    if (qualityGate.status != 'OK') {
+                        error "Pipeline aborted due to failing quality gate: ${qualityGate.status}"
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        
+        success {
+            echo 'Pipeline completed successfully.'
+        }
+        failure {
+            echo 'Pipeline failed. Check logs for details.'
+        }
+     }
+}
